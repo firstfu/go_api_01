@@ -107,17 +107,17 @@ demo:
 ## 用瀏覽器開啟活動資訊
 .PHONY: open-event
 open-event:
-	start $(BASE_URL)/api/events/$(or $(ID),evt-1)
+	cmd /c start $(BASE_URL)/api/events/$(or $(ID),evt-1)
 
 ## 用瀏覽器開啟訂單列表
 .PHONY: open-orders
 open-orders:
-	start $(BASE_URL)/api/events/$(or $(ID),evt-1)/orders
+	cmd /c start $(BASE_URL)/api/events/$(or $(ID),evt-1)/orders
 
 ## 用瀏覽器開啟全域統計
 .PHONY: open-stats
 open-stats:
-	start $(BASE_URL)/api/stats
+	cmd /c start $(BASE_URL)/api/stats
 
 # ─────────────────────────────────────────────
 # 說明
