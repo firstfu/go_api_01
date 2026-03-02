@@ -152,7 +152,7 @@ func runScenario(scenario TestScenario) ScenarioResult {
 		EventID:     event.ID,
 		Concurrency: scenario.Concurrency,
 		PerUser:     scenario.PerUser,
-	})
+	}, nil)
 	duration := time.Since(startTime)
 
 	if err != nil {

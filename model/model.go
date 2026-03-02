@@ -117,6 +117,26 @@ type Stats struct {
 	TotalResponseTime float64 `json:"total_response_time_ms"`
 }
 
+// ProgressEvent 模擬進度事件
+// 由 reporter goroutine 產生，每完成一定比例的搶票後發送
+// 同時用於 console log 輸出與 SSE 串流推送
+type ProgressEvent struct {
+	// Current 已完成的請求數
+	Current int `json:"current"`
+	// Total 總請求數
+	Total int `json:"total"`
+	// SuccessCount 累計成功數
+	SuccessCount int `json:"success_count"`
+	// FailCount 累計失敗數
+	FailCount int `json:"fail_count"`
+	// Remaining 活動剩餘票數
+	Remaining int `json:"remaining"`
+	// Percentage 完成百分比
+	Percentage float64 `json:"percentage"`
+	// Done 是否全部完成
+	Done bool `json:"done"`
+}
+
 // APIResponse 統一 API 回應格式
 // 所有 API 端點皆使用此結構回傳結果
 type APIResponse struct {

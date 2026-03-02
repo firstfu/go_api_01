@@ -1,0 +1,605 @@
+<!--
+  simulate.html — 搶票模擬操作頁面
+  用途：提供模擬控制介面，透過 SSE 即時串流顯示搶票模擬進度與最終統計結果。
+  使用方式：/web/simulate.html
+-->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>搶票模擬 — 搶票模擬系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-deep:#060b18;--bg-card:#0d1525;--bg-card-alt:#111d33;
+  --border:#1a2744;--border-glow:rgba(0,229,255,.2);
+  --cyan:#00e5ff;--magenta:#ff2d6b;--green:#00ff88;--amber:#ffb800;
+  --text:#e2e8f0;--text-dim:#64748b;--text-muted:#334155;
+  --font-display:'Orbitron',sans-serif;
+  --font-mono:'Space Mono',monospace;
+  --font-body:'Outfit',sans-serif;
+}
+html{font-size:16px}
+body{
+  background:var(--bg-deep);color:var(--text);
+  font-family:var(--font-body);min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,229,255,.08),transparent),
+    linear-gradient(180deg,transparent 0%,rgba(0,229,255,.02) 100%);
+}
+
+/* ── 背景網格 ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+
+/* ── 導航列 ── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(6,11,24,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;height:56px;display:flex;align-items:center;gap:2rem;
+}
+nav .logo{
+  font-family:var(--font-display);font-weight:900;font-size:.9rem;
+  letter-spacing:.15em;color:var(--cyan);text-transform:uppercase;
+  text-shadow:0 0 20px rgba(0,229,255,.4);
+}
+nav .links{display:flex;gap:.25rem}
+nav .links a{
+  font-family:var(--font-body);font-size:.85rem;font-weight:500;
+  color:var(--text-dim);text-decoration:none;
+  padding:.4rem .9rem;border-radius:6px;transition:all .2s;
+}
+nav .links a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+nav .links a.active{color:var(--cyan);background:rgba(0,229,255,.08)}
+
+/* ── 主容器 ── */
+.container{
+  position:relative;z-index:1;
+  max-width:720px;margin:0 auto;padding:3rem 1.5rem 4rem;
+}
+
+/* ── 頁面標題 ── */
+.page-header{margin-bottom:2.5rem}
+.page-header h1{
+  font-family:var(--font-display);font-size:1.6rem;font-weight:700;
+  letter-spacing:.08em;margin-bottom:.5rem;
+}
+.page-header .subtitle{
+  font-size:.9rem;color:var(--text-dim);font-weight:300;
+}
+
+/* ── 卡片 ── */
+.card{
+  background:var(--bg-card);
+  border:1px solid var(--border);border-radius:16px;
+  padding:2rem;position:relative;overflow:hidden;
+  box-shadow:0 0 40px rgba(0,229,255,.04);
+  transition:box-shadow .3s;
+}
+.card:hover{box-shadow:0 0 60px rgba(0,229,255,.08)}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+}
+.card+.card{margin-top:1.5rem}
+
+/* ── 卡片標題 ── */
+.card-title{
+  font-family:var(--font-display);font-size:.85rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--cyan);margin-bottom:1.5rem;
+}
+
+/* ── 表單 ── */
+.form-group{margin-bottom:1.25rem}
+.form-group label{
+  display:block;font-size:.8rem;font-weight:500;
+  color:var(--text-dim);margin-bottom:.5rem;
+  letter-spacing:.05em;text-transform:uppercase;
+}
+.form-group input{
+  width:100%;padding:.7rem 1rem;
+  background:var(--bg-card-alt);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);
+  font-family:var(--font-mono);font-size:.9rem;
+  outline:none;transition:border-color .2s, box-shadow .2s;
+}
+.form-group input:focus{
+  border-color:var(--cyan);
+  box-shadow:0 0 12px rgba(0,229,255,.15);
+}
+.form-group input::placeholder{color:var(--text-muted)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+
+/* ── 按鈕 ── */
+.btn-primary{
+  width:100%;padding:.85rem 1.5rem;margin-top:.5rem;
+  background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(0,229,255,.05));
+  border:1px solid var(--cyan);border-radius:10px;
+  color:var(--cyan);font-family:var(--font-display);
+  font-size:.85rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;
+  box-shadow:0 0 20px rgba(0,229,255,.15);
+  transition:all .25s;
+}
+.btn-primary:hover{
+  background:linear-gradient(135deg,rgba(0,229,255,.25),rgba(0,229,255,.1));
+  box-shadow:0 0 30px rgba(0,229,255,.3);
+  transform:translateY(-1px);
+}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{
+  opacity:.4;cursor:not-allowed;
+  transform:none;
+  box-shadow:none;
+}
+
+/* ── 指標行 ── */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.metrics.cols-4{grid-template-columns:repeat(4,1fr)}
+.metric{
+  background:var(--bg-card-alt);border:1px solid var(--border);
+  border-radius:12px;padding:1.2rem;text-align:center;
+  transition:all .25s;
+}
+.metric:hover{border-color:var(--border-glow);transform:translateY(-2px)}
+.metric .label{
+  font-size:.7rem;font-weight:500;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--text-dim);margin-bottom:.5rem;
+}
+.metric .value{
+  font-family:var(--font-display);font-size:1.3rem;font-weight:700;
+}
+.metric .value.cyan{color:var(--cyan);text-shadow:0 0 16px rgba(0,229,255,.3)}
+.metric .value.green{color:var(--green);text-shadow:0 0 16px rgba(0,255,136,.3)}
+.metric .value.magenta{color:var(--magenta);text-shadow:0 0 16px rgba(255,45,107,.3)}
+.metric .value.amber{color:var(--amber);text-shadow:0 0 16px rgba(255,184,0,.3)}
+.metric .unit{
+  font-family:var(--font-mono);font-size:.65rem;color:var(--text-dim);margin-top:.25rem;
+}
+
+/* ── 進度條 ── */
+.progress-section{margin-bottom:1.5rem}
+.progress-header{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:.75rem;
+}
+.progress-label{font-size:.8rem;font-weight:500;color:var(--text-dim)}
+.progress-pct{
+  font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--cyan);
+}
+.progress-bar{
+  height:10px;background:var(--bg-card-alt);border-radius:99px;
+  overflow:hidden;border:1px solid var(--border);
+}
+.progress-fill{
+  height:100%;border-radius:99px;width:0%;
+  background:linear-gradient(90deg,var(--cyan),var(--green));
+  box-shadow:0 0 12px rgba(0,229,255,.4);
+  transition:width .5s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+.progress-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.15) 50%,transparent 100%);
+  animation:shimmer 2s infinite;
+}
+@keyframes shimmer{
+  0%{transform:translateX(-100%)}
+  100%{transform:translateX(100%)}
+}
+
+/* ── 狀態文字 ── */
+.status-text{
+  font-family:var(--font-mono);font-size:.8rem;color:var(--text-dim);
+  margin-top:.75rem;
+}
+.status-text .dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.5);
+  animation:pulse 1.2s infinite;vertical-align:middle;
+  margin-right:.4rem;
+}
+@keyframes pulse{
+  0%,100%{opacity:1}50%{opacity:.3}
+}
+
+/* ── 摘要區 ── */
+.summary{
+  font-family:var(--font-mono);font-size:.8rem;color:var(--text-dim);
+  padding-top:1rem;border-top:1px solid var(--border);
+  line-height:1.6;
+}
+.summary .highlight{color:var(--cyan);font-weight:700}
+
+/* ── 隱藏 ── */
+.hidden{display:none}
+
+/* ── 錯誤 ── */
+.error-msg{
+  background:rgba(255,45,107,.08);border:1px solid rgba(255,45,107,.25);
+  border-radius:10px;padding:1rem 1.25rem;margin-top:1rem;
+  color:var(--magenta);font-size:.9rem;font-weight:500;
+}
+
+/* ── 載入動畫（按鈕用） ── */
+.spinner-inline{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(0,229,255,.3);border-top-color:var(--cyan);
+  border-radius:50%;animation:spin .7s linear infinite;
+  vertical-align:middle;margin-right:.5rem;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 響應式 ── */
+@media(max-width:540px){
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .form-row{grid-template-columns:1fr}
+  .container{padding:2rem 1rem 3rem}
+  .page-header h1{font-size:1.3rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">GRAB//SYS</div>
+  <div class="links">
+    <a href="/web/event.html">活動</a>
+    <a href="/web/orders.html">訂單</a>
+    <a href="/web/stats.html">統計</a>
+    <a href="/web/simulate.html" class="active">模擬</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>搶票模擬</h1>
+    <div class="subtitle">啟動併發搶票模擬，即時觀測進度與結果</div>
+  </div>
+
+  <!-- ── 表單卡片 ── -->
+  <div class="card" id="form-card">
+    <div class="card-title">模擬參數</div>
+    <form id="sim-form" autocomplete="off">
+      <div class="form-group">
+        <label for="event-id">活動 ID</label>
+        <input type="text" id="event-id" value="evt-1" placeholder="例如 evt-1">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="concurrency">併發用戶數</label>
+          <input type="number" id="concurrency" value="500" min="1" placeholder="500">
+        </div>
+        <div class="form-group">
+          <label for="per-user">每人搶購票數</label>
+          <input type="number" id="per-user" value="1" min="1" placeholder="1">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" id="btn-start">開始模擬</button>
+    </form>
+    <div id="error-box" class="error-msg hidden"></div>
+  </div>
+
+  <!-- ── 進度卡片 ── -->
+  <div class="card hidden" id="progress-card">
+    <div class="card-title">模擬進度</div>
+    <div class="progress-section">
+      <div class="progress-header">
+        <span class="progress-label">完成進度</span>
+        <span class="progress-pct" id="pct-text">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+    <div class="metrics cols-4" id="progress-metrics">
+      <div class="metric">
+        <div class="label">已完成 / 總數</div>
+        <div class="value cyan" id="m-current">0 / 0</div>
+        <div class="unit">REQUESTS</div>
+      </div>
+      <div class="metric">
+        <div class="label">成功</div>
+        <div class="value green" id="m-success">0</div>
+        <div class="unit">SUCCESS</div>
+      </div>
+      <div class="metric">
+        <div class="label">失敗</div>
+        <div class="value magenta" id="m-fail">0</div>
+        <div class="unit">FAILED</div>
+      </div>
+      <div class="metric">
+        <div class="label">剩餘票數</div>
+        <div class="value amber" id="m-remaining">—</div>
+        <div class="unit">REMAINING</div>
+      </div>
+    </div>
+    <div class="status-text" id="status-text">
+      <span class="dot"></span>等待開始...
+    </div>
+  </div>
+
+  <!-- ── 結果卡片 ── -->
+  <div class="card hidden" id="result-card">
+    <div class="card-title">模擬結果</div>
+    <div class="metrics cols-4" id="result-metrics">
+      <div class="metric">
+        <div class="label">成功率</div>
+        <div class="value cyan" id="r-rate">—</div>
+        <div class="unit">%</div>
+      </div>
+      <div class="metric">
+        <div class="label">平均回應時間</div>
+        <div class="value green" id="r-avg">—</div>
+        <div class="unit">MS</div>
+      </div>
+      <div class="metric">
+        <div class="label">最小回應時間</div>
+        <div class="value amber" id="r-min">—</div>
+        <div class="unit">MS</div>
+      </div>
+      <div class="metric">
+        <div class="label">最大回應時間</div>
+        <div class="value magenta" id="r-max">—</div>
+        <div class="unit">MS</div>
+      </div>
+    </div>
+    <div class="summary" id="result-summary"></div>
+  </div>
+</div>
+
+<script>
+// simulate.html — 模擬控制頁面邏輯
+// 透過 SSE (Server-Sent Events) 即時接收模擬進度並更新畫面
+(() => {
+  // DOM 元素參考
+  const form = document.getElementById('sim-form');
+  const btnStart = document.getElementById('btn-start');
+  const errorBox = document.getElementById('error-box');
+  const progressCard = document.getElementById('progress-card');
+  const resultCard = document.getElementById('result-card');
+
+  // 進度元素
+  const pctText = document.getElementById('pct-text');
+  const progressFill = document.getElementById('progress-fill');
+  const mCurrent = document.getElementById('m-current');
+  const mSuccess = document.getElementById('m-success');
+  const mFail = document.getElementById('m-fail');
+  const mRemaining = document.getElementById('m-remaining');
+  const statusText = document.getElementById('status-text');
+
+  // 結果元素
+  const rRate = document.getElementById('r-rate');
+  const rAvg = document.getElementById('r-avg');
+  const rMin = document.getElementById('r-min');
+  const rMax = document.getElementById('r-max');
+  const resultSummary = document.getElementById('result-summary');
+
+  // 目前的 EventSource 連線
+  let eventSource = null;
+
+  // 表單提交事件
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    startSimulation();
+  });
+
+  /**
+   * 啟動模擬
+   * 1. 顯示進度卡片，隱藏結果卡片
+   * 2. 建立 EventSource 連線到 SSE 端點
+   * 3. 監聽 progress / result / error 事件
+   */
+  function startSimulation() {
+    // 讀取表單參數
+    const eventId = document.getElementById('event-id').value.trim();
+    const concurrency = parseInt(document.getElementById('concurrency').value, 10);
+    const perUser = parseInt(document.getElementById('per-user').value, 10);
+
+    // 基本驗證
+    if (!eventId) {
+      showError('請輸入活動 ID');
+      return;
+    }
+    if (!concurrency || concurrency <= 0) {
+      showError('併發用戶數必須大於 0');
+      return;
+    }
+    if (!perUser || perUser <= 0) {
+      showError('每人搶購票數必須大於 0');
+      return;
+    }
+
+    // 清除先前的錯誤與結果
+    hideError();
+    resultCard.classList.add('hidden');
+
+    // 重設進度
+    resetProgress();
+    progressCard.classList.remove('hidden');
+
+    // 停用按鈕
+    setButtonLoading(true);
+
+    // 關閉先前的連線（若有）
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+
+    // 建立 SSE 連線
+    const params = new URLSearchParams({
+      event_id: eventId,
+      concurrency: concurrency,
+      per_user: perUser
+    });
+    eventSource = new EventSource(`/api/simulate/stream?${params}`);
+
+    // 監聽 progress 事件
+    eventSource.addEventListener('progress', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        updateProgress(data);
+      } catch (err) {
+        console.error('解析 progress 事件失敗:', err);
+      }
+    });
+
+    // 監聽 result 事件
+    eventSource.addEventListener('result', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        showResult(data);
+      } catch (err) {
+        console.error('解析 result 事件失敗:', err);
+      }
+      closeConnection();
+    });
+
+    // 監聽 error 事件（伺服器發送的自定義 error 事件）
+    eventSource.addEventListener('error', (e) => {
+      // 區分瀏覽器自動觸發的連線錯誤 vs 伺服器傳送的 error 事件
+      if (e.data) {
+        try {
+          const data = JSON.parse(e.data);
+          showError(data.message || '模擬過程發生未知錯誤');
+        } catch {
+          showError('模擬過程發生未知錯誤');
+        }
+      } else {
+        // 瀏覽器連線錯誤
+        if (eventSource.readyState === EventSource.CLOSED) {
+          // 正常關閉，不需處理
+          return;
+        }
+        showError('與伺服器的連線中斷，請確認伺服器是否運行中');
+      }
+      closeConnection();
+    });
+  }
+
+  /**
+   * 更新進度顯示
+   * @param {Object} data - ProgressEvent 資料
+   */
+  function updateProgress(data) {
+    const pct = data.percentage.toFixed(1);
+
+    // 更新進度條
+    progressFill.style.width = pct + '%';
+    pctText.textContent = pct + '%';
+
+    // 更新指標
+    mCurrent.textContent = data.current.toLocaleString() + ' / ' + data.total.toLocaleString();
+    mSuccess.textContent = data.success_count.toLocaleString();
+    mFail.textContent = data.fail_count.toLocaleString();
+    mRemaining.textContent = data.remaining.toLocaleString();
+
+    // 更新狀態文字
+    if (data.done) {
+      statusText.innerHTML = '<span class="dot" style="background:var(--green);box-shadow:0 0 8px rgba(0,255,136,.5)"></span>模擬完成，正在處理結果...';
+    } else {
+      statusText.innerHTML = '<span class="dot"></span>模擬進行中 — ' +
+        data.current.toLocaleString() + ' / ' + data.total.toLocaleString() + ' 請求已完成';
+    }
+  }
+
+  /**
+   * 顯示最終結果
+   * @param {Object} data - SimulationResult 資料
+   */
+  function showResult(data) {
+    // 確保進度條到 100%
+    progressFill.style.width = '100%';
+    pctText.textContent = '100.0%';
+    statusText.innerHTML = '<span class="dot" style="background:var(--green);box-shadow:0 0 8px rgba(0,255,136,.5)"></span>模擬已完成';
+
+    // 填入結果指標
+    rRate.textContent = data.success_rate.toFixed(2);
+    rAvg.textContent = data.avg_response_time_ms.toFixed(2);
+    rMin.textContent = data.min_response_time_ms.toFixed(2);
+    rMax.textContent = data.max_response_time_ms.toFixed(2);
+
+    // 摘要文字
+    resultSummary.innerHTML =
+      '活動 <span class="highlight">' + data.event_id + '</span> 的模擬已完成。' +
+      '共發出 <span class="highlight">' + data.total_requests.toLocaleString() + '</span> 筆搶票請求，' +
+      '其中 <span class="highlight">' + data.success_count.toLocaleString() + '</span> 筆成功、' +
+      '<span class="highlight">' + data.fail_count.toLocaleString() + '</span> 筆失敗，' +
+      '成功率 <span class="highlight">' + data.success_rate.toFixed(2) + '%</span>。' +
+      '平均回應時間 <span class="highlight">' + data.avg_response_time_ms.toFixed(2) + ' ms</span>。';
+
+    // 顯示結果卡片
+    resultCard.classList.remove('hidden');
+
+    // 重新啟用按鈕
+    setButtonLoading(false);
+  }
+
+  /**
+   * 重設進度顯示至初始狀態
+   */
+  function resetProgress() {
+    progressFill.style.width = '0%';
+    pctText.textContent = '0%';
+    mCurrent.textContent = '0 / 0';
+    mSuccess.textContent = '0';
+    mFail.textContent = '0';
+    mRemaining.textContent = '—';
+    statusText.innerHTML = '<span class="dot"></span>正在連線至伺服器...';
+  }
+
+  /**
+   * 關閉 SSE 連線並重新啟用按鈕
+   */
+  function closeConnection() {
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+    setButtonLoading(false);
+  }
+
+  /**
+   * 切換按鈕的載入狀態
+   * @param {boolean} loading - 是否為載入中
+   */
+  function setButtonLoading(loading) {
+    btnStart.disabled = loading;
+    if (loading) {
+      btnStart.innerHTML = '<span class="spinner-inline"></span>模擬執行中...';
+    } else {
+      btnStart.textContent = '開始模擬';
+    }
+  }
+
+  /**
+   * 顯示錯誤訊息
+   * @param {string} msg - 錯誤訊息
+   */
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.remove('hidden');
+  }
+
+  /**
+   * 隱藏錯誤訊息
+   */
+  function hideError() {
+    errorBox.classList.add('hidden');
+    errorBox.textContent = '';
+  }
+})();
+</script>
+</body>
+</html>

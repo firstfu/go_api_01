@@ -42,6 +42,7 @@ func SetupRouter(
 
 		// 模擬相關路由
 		api.POST("/simulate", simulateHandler.StartSimulation)
+		api.GET("/simulate/stream", simulateHandler.StreamSimulation)
 		api.GET("/stats", simulateHandler.GetStats)
 	}
 

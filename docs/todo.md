@@ -17,3 +17,8 @@
 - ~~Step 13: store/store.go — 新增 GetEventSnapshot() 方法~~
 - ~~Step 14: cmd/report/main.go — 併發壓力測試報告生成器~~
 - ~~Step 15: 執行報告生成器，產出 docs/report.md~~
+- ~~Step 16: model/model.go — 新增 ProgressEvent 進度事件結構~~
+- ~~Step 17: service/simulator.go — 重構 RunSimulation，加入 reporter goroutine 進度匯報~~
+- ~~Step 18: handler/simulate.go — 新增 StreamSimulation SSE 串流端點~~
+- ~~Step 19: router/router.go — 註冊 GET /api/simulate/stream 路由~~
+- ~~Step 20: web/simulate.html — 前端模擬操作頁面（SSE 即時進度）~~
