@@ -1,0 +1,268 @@
+<!--
+  orders.html — 訂單列表頁面
+  用途：以表格方式展示某活動的所有搶票訂單。
+  使用方式：/web/orders.html?id=evt-1
+-->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訂單列表 — 搶票模擬系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-deep:#060b18;--bg-card:#0d1525;--bg-card-alt:#111d33;
+  --border:#1a2744;--border-glow:rgba(0,229,255,.2);
+  --cyan:#00e5ff;--magenta:#ff2d6b;--green:#00ff88;--amber:#ffb800;
+  --text:#e2e8f0;--text-dim:#64748b;--text-muted:#334155;
+  --font-display:'Orbitron',sans-serif;
+  --font-mono:'Space Mono',monospace;
+  --font-body:'Outfit',sans-serif;
+}
+html{font-size:16px}
+body{
+  background:var(--bg-deep);color:var(--text);
+  font-family:var(--font-body);min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,229,255,.08),transparent),
+    linear-gradient(180deg,transparent 0%,rgba(0,229,255,.02) 100%);
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+
+/* ── 導航列 ── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(6,11,24,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;height:56px;display:flex;align-items:center;gap:2rem;
+}
+nav .logo{
+  font-family:var(--font-display);font-weight:900;font-size:.9rem;
+  letter-spacing:.15em;color:var(--cyan);text-transform:uppercase;
+  text-shadow:0 0 20px rgba(0,229,255,.4);
+}
+nav .links{display:flex;gap:.25rem}
+nav .links a{
+  font-family:var(--font-body);font-size:.85rem;font-weight:500;
+  color:var(--text-dim);text-decoration:none;
+  padding:.4rem .9rem;border-radius:6px;transition:all .2s;
+}
+nav .links a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+nav .links a.active{color:var(--cyan);background:rgba(0,229,255,.08)}
+
+/* ── 主容器 ── */
+.container{
+  position:relative;z-index:1;
+  max-width:900px;margin:0 auto;padding:3rem 1.5rem 4rem;
+}
+.page-header{margin-bottom:2.5rem}
+.page-header h1{
+  font-family:var(--font-display);font-size:1.6rem;font-weight:700;
+  letter-spacing:.08em;margin-bottom:.5rem;
+}
+.page-header .subtitle{
+  font-size:.9rem;color:var(--text-dim);font-weight:300;
+}
+
+/* ── 摘要列 ── */
+.summary{
+  display:flex;gap:1.5rem;margin-bottom:2rem;flex-wrap:wrap;
+}
+.summary-chip{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:10px;padding:.7rem 1.2rem;
+  display:flex;align-items:center;gap:.6rem;
+}
+.summary-chip .label{font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em}
+.summary-chip .val{font-family:var(--font-display);font-weight:700;font-size:1rem;color:var(--cyan)}
+
+/* ── 表格卡片 ── */
+.table-card{
+  background:var(--bg-card);
+  border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;position:relative;
+  box-shadow:0 0 40px rgba(0,229,255,.04);
+}
+.table-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--magenta),transparent);
+}
+
+table{width:100%;border-collapse:collapse}
+thead{background:var(--bg-card-alt)}
+th{
+  font-family:var(--font-body);font-size:.7rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.12em;color:var(--text-dim);
+  padding:1rem 1.2rem;text-align:left;
+  border-bottom:1px solid var(--border);
+}
+td{
+  padding:.85rem 1.2rem;
+  border-bottom:1px solid rgba(26,39,68,.5);
+  font-size:.88rem;transition:background .15s;
+}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(0,229,255,.03)}
+.col-id{font-family:var(--font-mono);font-size:.78rem;color:var(--text-dim)}
+.col-user{font-family:var(--font-mono);font-size:.82rem}
+.col-qty{
+  font-family:var(--font-display);font-weight:700;font-size:.9rem;
+  color:var(--cyan);text-align:center;
+}
+.col-price{
+  font-family:var(--font-mono);font-weight:700;color:var(--green);
+}
+.col-time{font-family:var(--font-mono);font-size:.75rem;color:var(--text-dim)}
+
+/* ── 空狀態 ── */
+.empty{text-align:center;padding:4rem 2rem;color:var(--text-dim)}
+.empty .icon{font-size:2.5rem;margin-bottom:1rem;opacity:.4}
+
+/* ── 錯誤 ── */
+.error-card{
+  background:rgba(255,45,107,.05);border:1px solid rgba(255,45,107,.2);
+  border-radius:16px;text-align:center;padding:3rem 2rem;
+}
+.error-card .icon{font-size:2.5rem;margin-bottom:1rem;opacity:.6}
+.error-card .msg{color:var(--magenta);font-size:1.1rem;font-weight:500}
+.error-card .hint{color:var(--text-dim);font-size:.85rem;margin-top:.5rem}
+
+/* ── 載入 ── */
+.loading{text-align:center;padding:4rem 2rem;color:var(--text-dim)}
+.spinner{
+  width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--cyan);border-radius:50%;
+  animation:spin .8s linear infinite;margin:0 auto 1rem;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 動畫 ── */
+.fade-in{animation:fadeIn .4s ease-out both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── 響應式 ── */
+@media(max-width:640px){
+  .container{padding:2rem 1rem 3rem}
+  th,td{padding:.7rem .6rem;font-size:.8rem}
+  .col-time{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">GRAB//SYS</div>
+  <div class="links">
+    <a href="/web/event.html">活動</a>
+    <a href="/web/orders.html" class="active">訂單</a>
+    <a href="/web/stats.html">統計</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>訂單列表</h1>
+    <div class="subtitle">顯示活動的所有成功搶票紀錄</div>
+  </div>
+  <div id="content">
+    <div class="loading">
+      <div class="spinner"></div>
+      載入中...
+    </div>
+  </div>
+</div>
+
+<script>
+// 訂單列表頁面 — 從 API 取得訂單資料並渲染成表格
+(() => {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id') || 'evt-1';
+
+  // 同步導航列連結的 id 參數
+  document.querySelectorAll('nav .links a').forEach(a => {
+    const url = new URL(a.href, location.origin);
+    if (!url.pathname.includes('stats')) url.searchParams.set('id', id);
+    a.href = url.toString();
+  });
+
+  fetch(`/api/events/${id}/orders`)
+    .then(r => r.json())
+    .then(res => {
+      if (res.code !== 0) throw new Error(res.message);
+      render(res.data);
+    })
+    .catch(err => {
+      document.getElementById('content').innerHTML = `
+        <div class="error-card">
+          <div class="icon">⚠</div>
+          <div class="msg">${err.message}</div>
+          <div class="hint">請確認活動 ID「${id}」是否正確</div>
+        </div>`;
+    });
+
+  function render(data) {
+    const orders = data.orders || [];
+    const total = data.total_count || orders.length;
+
+    let html = `
+      <div class="summary fade-in">
+        <div class="summary-chip">
+          <span class="label">活動</span>
+          <span class="val">${data.event_id}</span>
+        </div>
+        <div class="summary-chip">
+          <span class="label">訂單數</span>
+          <span class="val">${total}</span>
+        </div>
+      </div>`;
+
+    if (orders.length === 0) {
+      html += `
+        <div class="table-card">
+          <div class="empty">
+            <div class="icon">📭</div>
+            <div>目前尚無訂單</div>
+          </div>
+        </div>`;
+    } else {
+      html += `
+        <div class="table-card fade-in">
+          <table>
+            <thead>
+              <tr>
+                <th>訂單 ID</th>
+                <th>用戶</th>
+                <th style="text-align:center">數量</th>
+                <th>總價</th>
+                <th>時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.map((o, i) => `
+              <tr class="fade-in" style="animation-delay:${Math.min(i * 30, 600)}ms">
+                <td class="col-id">${o.id}</td>
+                <td class="col-user">${o.user_id}</td>
+                <td class="col-qty">${o.quantity}</td>
+                <td class="col-price">$${o.total_price.toLocaleString()}</td>
+                <td class="col-time">${new Date(o.created_at).toLocaleString('zh-TW')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    document.getElementById('content').innerHTML = html;
+  }
+})();
+</script>
+</body>
+</html>

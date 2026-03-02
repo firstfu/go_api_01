@@ -1,0 +1,319 @@
+<!--
+  stats.html — 全域統計儀表板
+  用途：以儀表板風格展示系統整體搶票統計數據，含成功率環形圖。
+  使用方式：/web/stats.html
+-->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全域統計 — 搶票模擬系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-deep:#060b18;--bg-card:#0d1525;--bg-card-alt:#111d33;
+  --border:#1a2744;--border-glow:rgba(0,229,255,.2);
+  --cyan:#00e5ff;--magenta:#ff2d6b;--green:#00ff88;--amber:#ffb800;
+  --text:#e2e8f0;--text-dim:#64748b;--text-muted:#334155;
+  --font-display:'Orbitron',sans-serif;
+  --font-mono:'Space Mono',monospace;
+  --font-body:'Outfit',sans-serif;
+}
+html{font-size:16px}
+body{
+  background:var(--bg-deep);color:var(--text);
+  font-family:var(--font-body);min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,229,255,.08),transparent),
+    linear-gradient(180deg,transparent 0%,rgba(0,229,255,.02) 100%);
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+
+/* ── 導航列 ── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(6,11,24,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;height:56px;display:flex;align-items:center;gap:2rem;
+}
+nav .logo{
+  font-family:var(--font-display);font-weight:900;font-size:.9rem;
+  letter-spacing:.15em;color:var(--cyan);text-transform:uppercase;
+  text-shadow:0 0 20px rgba(0,229,255,.4);
+}
+nav .links{display:flex;gap:.25rem}
+nav .links a{
+  font-family:var(--font-body);font-size:.85rem;font-weight:500;
+  color:var(--text-dim);text-decoration:none;
+  padding:.4rem .9rem;border-radius:6px;transition:all .2s;
+}
+nav .links a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+nav .links a.active{color:var(--cyan);background:rgba(0,229,255,.08)}
+
+/* ── 主容器 ── */
+.container{
+  position:relative;z-index:1;
+  max-width:800px;margin:0 auto;padding:3rem 1.5rem 4rem;
+}
+.page-header{margin-bottom:2.5rem}
+.page-header h1{
+  font-family:var(--font-display);font-size:1.6rem;font-weight:700;
+  letter-spacing:.08em;margin-bottom:.5rem;
+}
+.page-header .subtitle{
+  font-size:.9rem;color:var(--text-dim);font-weight:300;
+}
+
+/* ── 環形圖區塊 ── */
+.gauge-section{
+  display:flex;justify-content:center;align-items:center;
+  margin-bottom:3rem;
+}
+.gauge-wrap{position:relative;width:200px;height:200px}
+.gauge-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge-track{fill:none;stroke:var(--bg-card-alt);stroke-width:12}
+.gauge-fill{
+  fill:none;stroke:url(#gaugeGrad);stroke-width:12;
+  stroke-linecap:round;
+  transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1);
+}
+.gauge-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.gauge-pct{
+  font-family:var(--font-display);font-size:2.2rem;font-weight:900;
+  color:var(--cyan);text-shadow:0 0 24px rgba(0,229,255,.4);
+}
+.gauge-label{font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.15em;margin-top:.25rem}
+
+/* ── 統計卡片 ── */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;
+}
+.stat-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:14px;padding:1.5rem;text-align:center;
+  position:relative;overflow:hidden;
+  transition:all .3s;
+}
+.stat-card:hover{
+  border-color:var(--border-glow);transform:translateY(-3px);
+  box-shadow:0 8px 32px rgba(0,229,255,.08);
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+}
+.stat-card.cyan::before{background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
+.stat-card.green::before{background:linear-gradient(90deg,transparent,var(--green),transparent)}
+.stat-card.magenta::before{background:linear-gradient(90deg,transparent,var(--magenta),transparent)}
+.stat-card .label{
+  font-size:.7rem;font-weight:500;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--text-dim);margin-bottom:.75rem;
+}
+.stat-card .value{
+  font-family:var(--font-display);font-size:1.7rem;font-weight:700;
+  line-height:1;
+}
+.stat-card.cyan .value{color:var(--cyan);text-shadow:0 0 20px rgba(0,229,255,.3)}
+.stat-card.green .value{color:var(--green);text-shadow:0 0 20px rgba(0,255,136,.3)}
+.stat-card.magenta .value{color:var(--magenta);text-shadow:0 0 20px rgba(255,45,107,.3)}
+.stat-card .unit{
+  font-family:var(--font-mono);font-size:.65rem;color:var(--text-dim);margin-top:.4rem;
+}
+
+/* ── 回應時間區塊 ── */
+.time-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:16px;padding:1.8rem;position:relative;overflow:hidden;
+}
+.time-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--amber),transparent);
+}
+.time-card .title{
+  font-family:var(--font-display);font-size:.85rem;font-weight:700;
+  letter-spacing:.08em;margin-bottom:1.2rem;color:var(--amber);
+}
+.time-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.6rem 0;
+}
+.time-row+.time-row{border-top:1px solid rgba(26,39,68,.6)}
+.time-row .tl{font-size:.85rem;color:var(--text-dim)}
+.time-row .tv{
+  font-family:var(--font-mono);font-weight:700;font-size:1rem;color:var(--amber);
+}
+.time-row .tv .ms{font-size:.7rem;font-weight:400;color:var(--text-dim);margin-left:.2rem}
+
+/* ── 錯誤 ── */
+.error-card{
+  background:rgba(255,45,107,.05);border:1px solid rgba(255,45,107,.2);
+  border-radius:16px;text-align:center;padding:3rem 2rem;
+}
+.error-card .icon{font-size:2.5rem;margin-bottom:1rem;opacity:.6}
+.error-card .msg{color:var(--magenta);font-size:1.1rem;font-weight:500}
+.error-card .hint{color:var(--text-dim);font-size:.85rem;margin-top:.5rem}
+
+/* ── 載入 ── */
+.loading{text-align:center;padding:4rem 2rem;color:var(--text-dim)}
+.spinner{
+  width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--cyan);border-radius:50%;
+  animation:spin .8s linear infinite;margin:0 auto 1rem;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 動畫 ── */
+.fade-in{animation:fadeIn .5s ease-out both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── 空狀態 ── */
+.no-data{
+  text-align:center;padding:4rem 2rem;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+}
+.no-data .icon{font-size:3rem;margin-bottom:1rem;opacity:.3}
+.no-data .msg{color:var(--text-dim);font-size:1rem}
+.no-data .hint{color:var(--text-muted);font-size:.85rem;margin-top:.5rem}
+
+/* ── 響應式 ── */
+@media(max-width:540px){
+  .stats-grid{grid-template-columns:1fr}
+  .container{padding:2rem 1rem 3rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">GRAB//SYS</div>
+  <div class="links">
+    <a href="/web/event.html">活動</a>
+    <a href="/web/orders.html">訂單</a>
+    <a href="/web/stats.html" class="active">統計</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>全域統計</h1>
+    <div class="subtitle">系統搶票數據總覽</div>
+  </div>
+  <div id="content">
+    <div class="loading">
+      <div class="spinner"></div>
+      載入中...
+    </div>
+  </div>
+</div>
+
+<script>
+// 全域統計儀表板 — 從 API 取得統計資料並渲染環形圖與卡片
+(() => {
+  fetch('/api/stats')
+    .then(r => r.json())
+    .then(res => {
+      if (res.code !== 0) throw new Error(res.message);
+      render(res.data);
+    })
+    .catch(err => {
+      document.getElementById('content').innerHTML = `
+        <div class="error-card">
+          <div class="icon">⚠</div>
+          <div class="msg">${err.message}</div>
+          <div class="hint">請確認伺服器已啟動</div>
+        </div>`;
+    });
+
+  function render(s) {
+    // 無資料時顯示空狀態
+    if (s.total_attempts === 0) {
+      document.getElementById('content').innerHTML = `
+        <div class="no-data fade-in">
+          <div class="icon">📊</div>
+          <div class="msg">尚無搶票紀錄</div>
+          <div class="hint">請先建立活動並執行搶票模擬（make sim）</div>
+        </div>`;
+      return;
+    }
+
+    const rate = s.success_rate || 0;
+    const circ = 2 * Math.PI * 82; // SVG 圓周長 (r=82)
+    const offset = circ * (1 - rate / 100);
+
+    document.getElementById('content').innerHTML = `
+      <!-- 成功率環形圖 -->
+      <div class="gauge-section fade-in">
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 200 200">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="var(--cyan)"/>
+                <stop offset="100%" stop-color="var(--green)"/>
+              </linearGradient>
+            </defs>
+            <circle class="gauge-track" cx="100" cy="100" r="82"/>
+            <circle class="gauge-fill" cx="100" cy="100" r="82"
+              stroke-dasharray="${circ}"
+              stroke-dashoffset="${circ}"/>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct">${rate.toFixed(1)}%</div>
+            <div class="gauge-label">成功率</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 核心指標 -->
+      <div class="stats-grid">
+        <div class="stat-card cyan fade-in" style="animation-delay:.1s">
+          <div class="label">總嘗試</div>
+          <div class="value">${s.total_attempts.toLocaleString()}</div>
+          <div class="unit">ATTEMPTS</div>
+        </div>
+        <div class="stat-card green fade-in" style="animation-delay:.2s">
+          <div class="label">成功</div>
+          <div class="value">${s.total_success.toLocaleString()}</div>
+          <div class="unit">SUCCESS</div>
+        </div>
+        <div class="stat-card magenta fade-in" style="animation-delay:.3s">
+          <div class="label">失敗</div>
+          <div class="value">${s.total_fail.toLocaleString()}</div>
+          <div class="unit">FAILED</div>
+        </div>
+      </div>
+
+      <!-- 回應時間 -->
+      <div class="time-card fade-in" style="animation-delay:.4s">
+        <div class="title">回應時間</div>
+        <div class="time-row">
+          <span class="tl">平均回應時間</span>
+          <span class="tv">${s.avg_response_time_ms.toFixed(3)}<span class="ms">ms</span></span>
+        </div>
+        <div class="time-row">
+          <span class="tl">累計回應時間</span>
+          <span class="tv">${s.total_response_time_ms.toFixed(2)}<span class="ms">ms</span></span>
+        </div>
+      </div>`;
+
+    // 動畫：環形圖從 0 漸變
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.querySelector('.gauge-fill').style.strokeDashoffset = offset;
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

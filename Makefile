@@ -104,20 +104,20 @@ demo:
 # 瀏覽器開啟（需先啟動伺服器）
 # ─────────────────────────────────────────────
 
-## 用瀏覽器開啟活動資訊
+## 用瀏覽器開啟活動資訊（視覺化頁面）
 .PHONY: open-event
 open-event:
-	cmd /c start $(BASE_URL)/api/events/$(or $(ID),evt-1)
+	cmd /c start $(BASE_URL)/web/event.html?id=$(or $(ID),evt-1)
 
-## 用瀏覽器開啟訂單列表
+## 用瀏覽器開啟訂單列表（視覺化頁面）
 .PHONY: open-orders
 open-orders:
-	cmd /c start $(BASE_URL)/api/events/$(or $(ID),evt-1)/orders
+	cmd /c start $(BASE_URL)/web/orders.html?id=$(or $(ID),evt-1)
 
-## 用瀏覽器開啟全域統計
+## 用瀏覽器開啟全域統計（視覺化儀表板）
 .PHONY: open-stats
 open-stats:
-	cmd /c start $(BASE_URL)/api/stats
+	cmd /c start $(BASE_URL)/web/stats.html
 
 # ─────────────────────────────────────────────
 # 說明

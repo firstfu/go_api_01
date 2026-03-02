@@ -1,0 +1,314 @@
+<!--
+  event.html — 活動資訊頁面
+  用途：以視覺化方式展示搶票活動的詳細資訊，包含票券存量進度條。
+  使用方式：/web/event.html?id=evt-1
+-->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>活動資訊 — 搶票模擬系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-deep:#060b18;--bg-card:#0d1525;--bg-card-alt:#111d33;
+  --border:#1a2744;--border-glow:rgba(0,229,255,.2);
+  --cyan:#00e5ff;--magenta:#ff2d6b;--green:#00ff88;--amber:#ffb800;
+  --text:#e2e8f0;--text-dim:#64748b;--text-muted:#334155;
+  --font-display:'Orbitron',sans-serif;
+  --font-mono:'Space Mono',monospace;
+  --font-body:'Outfit',sans-serif;
+}
+html{font-size:16px}
+body{
+  background:var(--bg-deep);color:var(--text);
+  font-family:var(--font-body);min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,229,255,.08),transparent),
+    linear-gradient(180deg,transparent 0%,rgba(0,229,255,.02) 100%);
+}
+
+/* ── 背景網格 ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+
+/* ── 導航列 ── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(6,11,24,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;height:56px;display:flex;align-items:center;gap:2rem;
+}
+nav .logo{
+  font-family:var(--font-display);font-weight:900;font-size:.9rem;
+  letter-spacing:.15em;color:var(--cyan);text-transform:uppercase;
+  text-shadow:0 0 20px rgba(0,229,255,.4);
+}
+nav .links{display:flex;gap:.25rem}
+nav .links a{
+  font-family:var(--font-body);font-size:.85rem;font-weight:500;
+  color:var(--text-dim);text-decoration:none;
+  padding:.4rem .9rem;border-radius:6px;transition:all .2s;
+}
+nav .links a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+nav .links a.active{color:var(--cyan);background:rgba(0,229,255,.08)}
+
+/* ── 主容器 ── */
+.container{
+  position:relative;z-index:1;
+  max-width:720px;margin:0 auto;padding:3rem 1.5rem 4rem;
+}
+
+/* ── 頁面標題 ── */
+.page-header{margin-bottom:2.5rem}
+.page-header h1{
+  font-family:var(--font-display);font-size:1.6rem;font-weight:700;
+  letter-spacing:.08em;margin-bottom:.5rem;
+}
+.page-header .subtitle{
+  font-size:.9rem;color:var(--text-dim);font-weight:300;
+}
+
+/* ── 卡片 ── */
+.card{
+  background:var(--bg-card);
+  border:1px solid var(--border);border-radius:16px;
+  padding:2rem;position:relative;overflow:hidden;
+  box-shadow:0 0 40px rgba(0,229,255,.04);
+  transition:box-shadow .3s;
+}
+.card:hover{box-shadow:0 0 60px rgba(0,229,255,.08)}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+}
+
+/* ── 活動名稱 ── */
+.event-name{
+  font-family:var(--font-display);font-size:1.8rem;font-weight:900;
+  letter-spacing:.05em;line-height:1.3;margin-bottom:.5rem;
+  background:linear-gradient(135deg,var(--text) 0%,var(--cyan) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.event-desc{
+  color:var(--text-dim);font-size:.95rem;font-weight:300;
+  margin-bottom:2rem;line-height:1.5;
+}
+.event-id{
+  font-family:var(--font-mono);font-size:.75rem;
+  color:var(--text-muted);letter-spacing:.1em;
+  margin-bottom:1.5rem;text-transform:uppercase;
+}
+
+/* ── 指標行 ── */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem}
+.metric{
+  background:var(--bg-card-alt);border:1px solid var(--border);
+  border-radius:12px;padding:1.2rem;text-align:center;
+  transition:all .25s;
+}
+.metric:hover{border-color:var(--border-glow);transform:translateY(-2px)}
+.metric .label{
+  font-size:.7rem;font-weight:500;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--text-dim);margin-bottom:.5rem;
+}
+.metric .value{
+  font-family:var(--font-display);font-size:1.5rem;font-weight:700;
+}
+.metric .value.cyan{color:var(--cyan);text-shadow:0 0 16px rgba(0,229,255,.3)}
+.metric .value.green{color:var(--green);text-shadow:0 0 16px rgba(0,255,136,.3)}
+.metric .value.magenta{color:var(--magenta);text-shadow:0 0 16px rgba(255,45,107,.3)}
+.metric .unit{
+  font-family:var(--font-mono);font-size:.65rem;color:var(--text-dim);margin-top:.25rem;
+}
+
+/* ── 進度條 ── */
+.progress-section{margin-bottom:1.5rem}
+.progress-header{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:.75rem;
+}
+.progress-label{font-size:.8rem;font-weight:500;color:var(--text-dim)}
+.progress-pct{
+  font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--cyan);
+}
+.progress-bar{
+  height:10px;background:var(--bg-card-alt);border-radius:99px;
+  overflow:hidden;border:1px solid var(--border);
+}
+.progress-fill{
+  height:100%;border-radius:99px;
+  background:linear-gradient(90deg,var(--cyan),var(--green));
+  box-shadow:0 0 12px rgba(0,229,255,.4);
+  transition:width .8s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+.progress-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.15) 50%,transparent 100%);
+  animation:shimmer 2s infinite;
+}
+@keyframes shimmer{
+  0%{transform:translateX(-100%)}
+  100%{transform:translateX(100%)}
+}
+
+/* ── 時間戳 ── */
+.timestamp{
+  font-family:var(--font-mono);font-size:.75rem;color:var(--text-muted);
+  padding-top:1rem;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:.5rem;
+}
+.timestamp .dot{
+  width:6px;height:6px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 8px rgba(0,255,136,.5);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{
+  0%,100%{opacity:1}50%{opacity:.4}
+}
+
+/* ── 錯誤 ── */
+.error-card{
+  background:rgba(255,45,107,.05);border-color:rgba(255,45,107,.2);
+  text-align:center;padding:3rem 2rem;
+}
+.error-card .icon{font-size:2.5rem;margin-bottom:1rem;opacity:.6}
+.error-card .msg{color:var(--magenta);font-size:1.1rem;font-weight:500}
+.error-card .hint{color:var(--text-dim);font-size:.85rem;margin-top:.5rem}
+
+/* ── 載入 ── */
+.loading{text-align:center;padding:4rem 2rem;color:var(--text-dim)}
+.spinner{
+  width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--cyan);border-radius:50%;
+  animation:spin .8s linear infinite;margin:0 auto 1rem;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 響應式 ── */
+@media(max-width:540px){
+  .metrics{grid-template-columns:1fr}
+  .event-name{font-size:1.3rem}
+  .container{padding:2rem 1rem 3rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">GRAB//SYS</div>
+  <div class="links">
+    <a href="/web/event.html" class="active">活動</a>
+    <a href="/web/orders.html">訂單</a>
+    <a href="/web/stats.html">統計</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>活動資訊</h1>
+    <div class="subtitle">即時顯示活動票券狀態</div>
+  </div>
+  <div id="content">
+    <div class="card loading">
+      <div class="spinner"></div>
+      載入中...
+    </div>
+  </div>
+</div>
+
+<script>
+// 活動資訊頁面 — 從 API 取得資料並渲染
+(() => {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id') || 'evt-1';
+
+  // 同步導航列連結的 id 參數
+  document.querySelectorAll('nav .links a').forEach(a => {
+    const url = new URL(a.href, location.origin);
+    if (!url.pathname.includes('stats')) url.searchParams.set('id', id);
+    a.href = url.toString();
+  });
+
+  fetch(`/api/events/${id}`)
+    .then(r => r.json())
+    .then(res => {
+      if (res.code !== 0) throw new Error(res.message);
+      render(res.data);
+    })
+    .catch(err => {
+      document.getElementById('content').innerHTML = `
+        <div class="card error-card">
+          <div class="icon">⚠</div>
+          <div class="msg">${err.message}</div>
+          <div class="hint">請確認活動 ID「${id}」是否正確，並確認伺服器已啟動</div>
+        </div>`;
+    });
+
+  function render(e) {
+    const sold = e.total_tickets - e.remaining;
+    const pct = e.total_tickets > 0
+      ? ((e.remaining / e.total_tickets) * 100).toFixed(1) : 0;
+    const created = new Date(e.created_at).toLocaleString('zh-TW');
+
+    document.getElementById('content').innerHTML = `
+      <div class="card">
+        <div class="event-id">ID: ${e.id}</div>
+        <div class="event-name">${e.name}</div>
+        ${e.description ? `<div class="event-desc">${e.description}</div>` : ''}
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">總票數</div>
+            <div class="value cyan">${e.total_tickets.toLocaleString()}</div>
+            <div class="unit">TOTAL</div>
+          </div>
+          <div class="metric">
+            <div class="label">剩餘票數</div>
+            <div class="value green">${e.remaining.toLocaleString()}</div>
+            <div class="unit">REMAINING</div>
+          </div>
+          <div class="metric">
+            <div class="label">票價</div>
+            <div class="value magenta">$${e.price.toLocaleString()}</div>
+            <div class="unit">NTD</div>
+          </div>
+        </div>
+
+        <div class="progress-section">
+          <div class="progress-header">
+            <span class="progress-label">票券存量</span>
+            <span class="progress-pct">${pct}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="timestamp">
+          <span class="dot"></span>
+          建立時間：${created}
+        </div>
+      </div>`;
+
+    // 動畫：進度條從 0 漸變到目標值
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.querySelector('.progress-fill').style.width = pct + '%';
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

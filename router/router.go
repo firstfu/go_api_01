@@ -26,6 +26,9 @@ func SetupRouter(
 	// 註冊 CORS 中間件，允許跨域請求
 	r.Use(corsMiddleware())
 
+	// 靜態檔案：提供 web/ 目錄下的 HTML 頁面
+	r.Static("/web", "./web")
+
 	// API 路由群組
 	api := r.Group("/api")
 	{
